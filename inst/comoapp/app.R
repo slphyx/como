@@ -1,5 +1,5 @@
 # CoMo COVID-19 App
-version_app <- "v11.17"
+version_app <- "v12.01"
 
 
 # Load packages
@@ -48,8 +48,10 @@ ui <- function(request) {
                                                                         value = 2.5, post = "%", ticks = FALSE),
                                                             sliderInput("reportc", label = span("Percentage of all", strong(" symptomatic infections "), "that are reported:"), min = 0, max = 100, step = 0.1,
                                                                         value = 5, post = "%", ticks = FALSE),
+                                                            sliderInput("reporth", label = span("Percentage of all infections requiring hospitalisation that are actually admitted to hospital:"), min = 0, max = 100, step = 0.1,
+                                                                        value = 50, post = "%", ticks = FALSE),
                                                             
-                                                            dateRangeInput("date_range", label = "Range of dates", start = "2020-02-10", end = "2020-09-01"),
+                                                            dateRangeInput("date_range", label = "Range of dates", start = "2020-02-12", end = "2020-12-05"),
                                                             br()
                                                         ),
                                                         source("./www/pushbar_parameters_country.R", local = TRUE)[1],
@@ -163,7 +165,6 @@ ui <- function(request) {
                                  )
                         ),
                         tabPanel("Visual Calibration", value = "tab_visualfit",
-                                 
                                  conditionalPanel("output.status_app_output == 'Ok Baseline' | output.status_app_output == 'Validated Baseline'",
                                                   br(), br(), br(), br(),
                                                   fluidRow(
@@ -215,6 +216,14 @@ ui <- function(request) {
                                                     column(6, 
                                                            highchartOutput("highchart_requirements_dual_interventions", height = "350px") %>% withSpinner(), br(),
                                                     )
+                                                  ),
+                                                  fluidRow(
+                                                    column(6, 
+                                                           highchartOutput("highchart_Rt_dual_baseline", height = "350px") %>% withSpinner(), br(),
+                                                    ),
+                                                    column(6, 
+                                                           highchartOutput("highchart_Rt_dual_interventions", height = "350px") %>% withSpinner(), br(),
+                                                    )
                                                   )
                                  )
                         )
@@ -228,9 +237,9 @@ ui <- function(request) {
 server <- function(input, output, session) {
   # On deployment only:
   # Stop the shiny app when the browser window is closed
-  session$onSessionEnded(function() {
-    stopApp()
-  })
+  # session$onSessionEnded(function() {
+  #   stopApp()
+  # })
   
   # Hide tabs on app launch ----
   hideTab(inputId = "tabs", target = "tab_modelpredictions")
@@ -379,7 +388,9 @@ server <- function(input, output, session) {
     if(! input$vaccination_switch) parameters["vaccine_on"] <- 10e5
     
     out <- ode(y = Y, times = times, method = "euler", hini = 0.05, func = covid, parms = parameters)
+    
     simul_baseline$results <- process_ode_outcome(out)
+    
     
     removeNotification(id = "model_run_notif", session = session)
     status_app$status <- "Ok Baseline"
